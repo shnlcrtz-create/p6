@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Energy Physics Simulation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #14213d;
+      --muted: #5e6b7a;
+      --line: #d8e0ea;
+      --paper: #f7fafc;
+      --panel: #ffffff;
+      --accent: #0f8b8d;
+      --accent-2: #f25f5c;
+      --accent-3: #f4b942;
+      --track: #eef3f7;
+      --shadow: 0 18px 45px rgba(20, 33, 61, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 16% 14%, rgba(242, 95, 92, 0.14), transparent 28%),
+        radial-gradient(circle at 88% 10%, rgba(15, 139, 141, 0.14), transparent 25%),
+        linear-gradient(180deg, #ffffff 0%, var(--paper) 52%, #edf4f7 100%);
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      padding: 0 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4.4rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      line-height: 1.5;
+    }
+
+    .formula {
+      justify-self: end;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      font-size: clamp(1.1rem, 2vw, 1.55rem);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(310px, 0.65fr);
+      gap: 20px;
+      padding-top: 22px;
+    }
+
+    section,
+    aside {
+      min-width: 0;
+    }
+
+    .simulation {
+      display: grid;
+      gap: 16px;
+    }
+
+    .stage {
+      position: relative;
+      overflow: hidden;
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, #dff6ff 0%, #f8fbfd 50%, #d7ead7 50%, #bdd8bd 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .cloud {
+      position: absolute;
+      top: 44px;
+      width: 118px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 38px 8px 0 rgba(255, 255, 255, 0.62), 74px -4px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    .cloud.one {
+      left: 9%;
+    }
+
+    .cloud.two {
+      right: 15%;
+      top: 82px;
+      transform: scale(0.75);
+      opacity: 0.82;
+    }
+
+    .track-bed {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      bottom: 95px;
+      height: 14px;
+      border-radius: 999px;
+      background: #303945;
+      box-shadow: inset 0 3px 0 rgba(255,255,255,0.18);
+    }
+
+    .tick-row {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      bottom: 72px;
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      color: #556270;
+      font-size: 0.78rem;
+    }
+
+    .tick-row span {
+      position: relative;
+      text-align: center;
+    }
+
+    .tick-row span::before {
+      content: "";
+      display: block;
+      width: 1px;
+      height: 12px;
+      margin: 0 auto 4px;
+      background: #6b7888;
+    }
+
+    .cart {
+      --cart-width: 112px;
+      position: absolute;
+      left: calc(5% + var(--x, 0px));
+      bottom: 110px;
+      width: var(--cart-width);
+      height: 70px;
+      transition: filter 0.2s ease;
+      filter: drop-shadow(0 10px 12px rgba(20, 33, 61, 0.22));
+    }
+
+    .cart-body {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 12px;
+      height: 42px;
+      border-radius: 8px 8px 5px 5px;
+      background: linear-gradient(135deg, var(--accent), #18a7a9);
+      border: 3px solid #0a5f61;
+    }
+
+    .cart-load {
+      position: absolute;
+      left: 29px;
+      top: -8px;
+      width: 54px;
+      height: var(--load-height, 26px);
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--accent-3), #ffe08a);
+      border: 3px solid #a86e00;
+      transform-origin: bottom;
+    }
+
+    .wheel {
+      position: absolute;
+      bottom: 4px;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #1f2933;
+      border: 5px solid #eef3f7;
+      outline: 2px solid #1f2933;
+    }
+
+    .wheel.left {
+      left: 22px;
+    }
+
+    .wheel.right {
+      right: 22px;
+    }
+
+    .speed-lines {
+      position: absolute;
+      left: -76px;
+      top: 22px;
+      width: 64px;
+      display: grid;
+      gap: 8px;
+      opacity: var(--speed-alpha, 0.35);
+    }
+
+    .speed-lines i {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--accent-2);
+    }
+
+    .readout-strip {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 12px;
+      border: 1px solid rgba(216, 224, 234, 0.85);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 5px;
+      font-size: clamp(1.05rem, 2vw, 1.5rem);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .control {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 28px rgba(20, 33, 61, 0.08);
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    label span {
+      color: var(--accent);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 18px 0 5px;
+      accent-color: var(--accent);
+    }
+
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .buttons {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 180px;
+      z-index: 4;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 16px;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e6eef5;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .stage .buttons button {
+      min-height: 38px;
+      padding: 0 12px;
+      box-shadow: 0 8px 18px rgba(20, 33, 61, 0.13);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .panel-header p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+
+    .energy-bar-wrap {
+      padding: 18px;
+    }
+
+    .energy-bar {
+      height: 30px;
+      border-radius: 999px;
+      background: var(--track);
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .energy-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2));
+      transition: width 0.2s ease;
+    }
+
+    .graph {
+      width: 100%;
+      height: 230px;
+      display: block;
+      background: #fbfdff;
+    }
+
+    .lesson {
+      margin-top: 16px;
+      padding: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .lesson h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .lesson ul {
+      margin: 0;
+      padding-left: 19px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .challenge {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px dashed #9fb0c1;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .challenge strong {
+      font-size: 0.98rem;
+    }
+
+    .answer {
+      min-height: 42px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .formula-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 0 18px 18px;
+    }
+
+    .formula-card {
+      min-height: 102px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .formula-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .formula-card strong {
+      display: block;
+      margin: 7px 0;
+      color: var(--accent);
+      font-size: 1.28rem;
+    }
+
+    .formula-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .calc-panel {
+      margin: 0 18px 18px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #14213d;
+      color: #fff;
+    }
+
+    .calc-panel[hidden] {
+      display: none;
+    }
+
+    .calc-panel h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .calc-steps {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-family: "Courier New", monospace;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .calc-steps li {
+      padding: 9px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .quiz-panel {
+      margin-top: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .quiz-layout {
+      display: grid;
+      grid-template-columns: 1fr minmax(260px, 0.44fr);
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .quiz-question {
+      margin: 0 0 14px;
+      font-size: clamp(1.18rem, 2.4vw, 1.75rem);
+      line-height: 1.2;
+    }
+
+    .quiz-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .quiz-option {
+      width: 100%;
+      min-height: 50px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .quiz-option.correct {
+      border-color: #0f8b8d;
+      background: #e4f6f4;
+    }
+
+    .quiz-option.wrong {
+      border-color: #f25f5c;
+      background: #fff0ef;
+    }
+
+    .quiz-side {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #f7fafc;
+      border: 1px solid var(--line);
+    }
+
+    .score {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .quiz-feedback {
+      min-height: 72px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .round-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #e4f6f4;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 860px) {
+      header,
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .formula {
+        justify-self: start;
+      }
+
+      .controls,
+      .readout-strip,
+      .formula-grid,
+      .quiz-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: 470px;
+      }
+
+      .readout-strip {
+        bottom: 16px;
+      }
+
+      .track-bed {
+        bottom: 190px;
+      }
+
+      .tick-row {
+        bottom: 166px;
+      }
+
+      .cart {
+        bottom: 205px;
+      }
+
+      .buttons {
+        bottom: 292px;
+        left: 12px;
+        right: 12px;
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Kinetic Energy</h1>
+        <p class="subtitle">Change the mass and velocity of the cart to see how motion stores energy. Watch carefully: velocity has a stronger effect because it is squared.</p>
+      </div>
+      <div class="formula">KE = 1/2 mv<sup>2</sup></div>
+    </header>
+
+    <main>
+      <section class="simulation" aria-label="Kinetic energy simulation">
+        <div class="stage" id="stage">
+          <div class="buttons">
+            <button id="launchBtn" type="button">Launch Cart</button>
+            <button class="secondary" id="doubleMassBtn" type="button">Double Mass</button>
+            <button class="secondary" id="doubleVelocityBtn" type="button">Double Velocity</button>
+            <button class="secondary" id="resetBtn" type="button">New Round</button>
+          </div>
+          <div class="cloud one"></div>
+          <div class="cloud two"></div>
+          <div class="track-bed"></div>
+          <div class="tick-row" aria-hidden="true">
+            <span>0 m</span>
+            <span>5</span>
+            <span>10</span>
+            <span>15</span>
+            <span>20</span>
+            <span>25</span>
+            <span>30</span>
+            <span>35</span>
+            <span>40</span>
+          </div>
+          <div class="cart" id="cart">
+            <div class="speed-lines" aria-hidden="true">
+              <i></i><i></i><i></i>
+            </div>
+            <div class="cart-load" id="cartLoad"></div>
+            <div class="cart-body"></div>
+            <div class="wheel left"></div>
+            <div class="wheel right"></div>
+          </div>
+          <div class="readout-strip">
+            <div class="metric">
+              <span>Mass</span>
+              <strong id="massReadout">5 kg</strong>
+            </div>
+            <div class="metric">
+              <span>Velocity</span>
+              <strong id="velocityReadout">6 m/s</strong>
+            </div>
+            <div class="metric">
+              <span>Kinetic Energy</span>
+              <strong id="energyReadout">90 J</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control">
+            <label for="mass">Mass <span id="massValue">5 kg</span></label>
+            <input id="mass" type="range" min="1" max="20" step="1" value="5">
+            <div class="range-labels"><span>1 kg</span><span>20 kg</span></div>
+          </div>
+          <div class="control">
+            <label for="velocity">Velocity <span id="velocityValue">6 m/s</span></label>
+            <input id="velocity" type="range" min="0" max="20" step="0.5" value="6">
+            <div class="range-labels"><span>0 m/s</span><span>20 m/s</span></div>
+          </div>
+        </div>
+
+      </section>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>Energy Meter</h2>
+          <p>The bar and graph compare your current kinetic energy with the maximum possible energy in this simulation.</p>
+        </div>
+        <div class="formula-grid" aria-label="Formula reference">
+          <div class="formula-card">
+            <span>Formula</span>
+            <strong>KE = 1/2 mv<sup>2</sup></strong>
+            <p>Kinetic energy is the energy of a moving object.</p>
+          </div>
+          <div class="formula-card">
+            <span>Mass</span>
+            <strong>m</strong>
+            <p>Measured in kilograms. More mass means more energy.</p>
+          </div>
+          <div class="formula-card">
+            <span>Velocity</span>
+            <strong>v</strong>
+            <p>Measured in meters per second. It is squared, so it matters a lot.</p>
+          </div>
+        </div>
+        <div class="energy-bar-wrap">
+          <div class="energy-bar" aria-label="Kinetic energy meter">
+            <div class="energy-fill" id="energyFill"></div>
+          </div>
+        </div>
+        <canvas class="graph" id="graph" width="560" height="280" aria-label="Graph of kinetic energy against velocity"></canvas>
+        <div class="calc-panel" id="calcPanel" aria-label="Step by step solution" hidden>
+          <h3>How to Calculate</h3>
+          <ul class="calc-steps">
+            <li id="stepFormula">KE = 1/2 mv^2</li>
+            <li id="stepSubstitute">KE = 1/2(5)(6^2)</li>
+            <li id="stepSquare">KE = 1/2(5)(36)</li>
+            <li id="stepAnswer">KE = 90 J</li>
+          </ul>
+        </div>
+        <div class="lesson">
+          <h3>What to notice</h3>
+          <ul>
+            <li>Doubling mass doubles kinetic energy.</li>
+            <li>Doubling velocity makes kinetic energy four times larger.</li>
+            <li>An object at rest has zero kinetic energy.</li>
+          </ul>
+          <div class="challenge">
+            <span class="round-tag" id="roundTag">Round 1</span>
+            <strong id="challengeText">Challenge: set mass to 10 kg and velocity to 8 m/s. What is the kinetic energy?</strong>
+            <button class="secondary" id="checkBtn" type="button">Check Current Setup</button>
+            <div class="answer" id="answer"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="quiz-panel" aria-label="Kinetic energy quiz">
+      <div class="panel-header">
+        <h2>Quick Quiz</h2>
+        <p id="quizIntro">Answer the questions based on the current cart setup.</p>
+      </div>
+      <div class="quiz-layout">
+        <div>
+          <p class="quiz-question" id="quizQuestion">Loading question...</p>
+          <div class="quiz-options" id="quizOptions"></div>
+        </div>
+        <div class="quiz-side">
+          <div>
+            <span>Score</span>
+            <div class="score" id="quizScore">0/0</div>
+          </div>
+          <div class="quiz-feedback" id="quizFeedback">Choose an answer to begin.</div>
+          <button id="nextQuestionBtn" type="button">Next Question</button>
+          <button class="secondary" id="restartQuizBtn" type="button">Restart Quiz</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const massInput = document.querySelector("#mass");
+    const velocityInput = document.querySelector("#velocity");
+    const massValue = document.querySelector("#massValue");
+    const velocityValue = document.querySelector("#velocityValue");
+    const massReadout = document.querySelector("#massReadout");
+    const velocityReadout = document.querySelector("#velocityReadout");
+    const energyReadout = document.querySelector("#energyReadout");
+    const energyFill = document.querySelector("#energyFill");
+    const cart = document.querySelector("#cart");
+    const cartLoad = document.querySelector("#cartLoad");
+    const stage = document.querySelector("#stage");
+    const graph = document.querySelector("#graph");
+    const answer = document.querySelector("#answer");
+    const stepSubstitute = document.querySelector("#stepSubstitute");
+    const stepSquare = document.querySelector("#stepSquare");
+    const stepAnswer = document.querySelector("#stepAnswer");
+    const calcPanel = document.querySelector("#calcPanel");
+    const challengeText = document.querySelector("#challengeText");
+    const roundTag = document.querySelector("#roundTag");
+    const quizIntro = document.querySelector("#quizIntro");
+    const quizQuestion = document.querySelector("#quizQuestion");
+    const quizOptions = document.querySelector("#quizOptions");
+    const quizScore = document.querySelector("#quizScore");
+    const quizFeedback = document.querySelector("#quizFeedback");
+    const nextQuestionBtn = document.querySelector("#nextQuestionBtn");
+    const restartQuizBtn = document.querySelector("#restartQuizBtn");
+    const ctx = graph.getContext("2d");
+
+    const maxMass = Number(massInput.max);
+    const maxVelocity = Number(velocityInput.max);
+    const maxEnergy = kineticEnergy(maxMass, maxVelocity);
+    let animationId = null;
+    let position = 0;
+    let lastTime = 0;
+    let roundNumber = 0;
+    let challenge = { mass: 10, velocity: 8, energy: 320 };
+    let quizQuestions = [];
+    let quizIndex = 0;
+    let quizScoreCount = 0;
+    let answered = false;
+
+    function kineticEnergy(mass, velocity) {
+      return 0.5 * mass * velocity * velocity;
+    }
+
+    function formatNumber(value) {
+      return Number.isInteger(value) ? String(value) : value.toFixed(1);
+    }
+
+    function currentValues() {
+      const mass = Number(massInput.value);
+      const velocity = Number(velocityInput.value);
+      return {
+        mass,
+        velocity,
+        energy: kineticEnergy(mass, velocity)
+      };
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(items) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function makeChoiceSet(correct, distractors) {
+      const unique = [correct, ...distractors].filter((value, index, list) => list.indexOf(value) === index);
+      while (unique.length < 4) {
+        unique.push(correct + randomInt(2, 9) * 10);
+      }
+      const options = shuffle(unique.slice(0, 4));
+      return {
+        options: options.map((value) => `${formatNumber(value)} J`),
+        answer: options.indexOf(correct)
+      };
+    }
+
+    function makeTextChoiceSet(correct, distractors) {
+      const options = shuffle([correct, ...distractors]);
+      return {
+        options,
+        answer: options.indexOf(correct)
+      };
+    }
+
+    function generateQuizFromCart() {
+      const { mass, velocity, energy } = currentValues();
+      const roundedEnergy = Math.round(energy);
+      const changedVelocity = Math.min(velocity * 2, maxVelocity);
+      const changedMass = Math.min(mass * 2, maxMass);
+      const changedVelocityEnergy = Math.round(kineticEnergy(mass, changedVelocity));
+      const changedMassEnergy = Math.round(kineticEnergy(changedMass, velocity));
+      const directChoices = makeChoiceSet(roundedEnergy, [
+        Math.round(mass * velocity),
+        Math.round(mass * velocity * velocity),
+        Math.round(energy / 2),
+        Math.round(energy * 2)
+      ]);
+      const velocityChoices = makeChoiceSet(changedVelocityEnergy, [
+        roundedEnergy * 2,
+        roundedEnergy * 3,
+        Math.round(changedVelocityEnergy / 2),
+        Math.round(changedVelocityEnergy + mass)
+      ]);
+      const massChoices = makeChoiceSet(changedMassEnergy, [
+        roundedEnergy + mass,
+        roundedEnergy * 4,
+        Math.round(changedMassEnergy / 2),
+        Math.round(changedMassEnergy + velocity)
+      ]);
+      const squaredChoices = makeTextChoiceSet(`${formatNumber(velocity)} m/s`, [
+        `${mass} kg`,
+        `${formatNumber(energy)} J`,
+        "1/2"
+      ]);
+
+      quizQuestions = shuffle([
+        {
+          question: `The cart has mass ${mass} kg and velocity ${formatNumber(velocity)} m/s. What is its kinetic energy?`,
+          options: directChoices.options,
+          answer: directChoices.answer,
+          explanation: `Use KE = 1/2mv^2: KE = 1/2(${mass})(${formatNumber(velocity)}^2) = ${formatNumber(energy)} J.`
+        },
+        {
+          question: "For this cart, what value is squared in the formula?",
+          options: squaredChoices.options,
+          answer: squaredChoices.answer,
+          explanation: `Velocity is squared, so ${formatNumber(velocity)} m/s is used as v.`
+        },
+        {
+          question: `If only velocity is changed to ${formatNumber(changedVelocity)} m/s, what is the new kinetic energy?`,
+          options: velocityChoices.options,
+          answer: velocityChoices.answer,
+          explanation: `New KE = 1/2(${mass})(${formatNumber(changedVelocity)}^2) = ${formatNumber(changedVelocityEnergy)} J.`
+        },
+        {
+          question: `If only mass is changed to ${changedMass} kg, what is the new kinetic energy?`,
+          options: massChoices.options,
+          answer: massChoices.answer,
+          explanation: `New KE = 1/2(${changedMass})(${formatNumber(velocity)}^2) = ${formatNumber(changedMassEnergy)} J.`
+        }
+      ]);
+    }
+
+    function resetQuizForCurrentCart() {
+      generateQuizFromCart();
+      quizIndex = 0;
+      quizScoreCount = 0;
+      calcPanel.hidden = true;
+      quizIntro.textContent = `Quiz is based on the cart now: ${massInput.value} kg and ${formatNumber(Number(velocityInput.value))} m/s.`;
+      renderQuiz();
+    }
+
+    function startNewRound() {
+      roundNumber++;
+      challenge.mass = randomInt(2, maxMass);
+      challenge.velocity = randomInt(2, maxVelocity);
+      challenge.energy = kineticEnergy(challenge.mass, challenge.velocity);
+      massInput.value = randomInt(1, maxMass);
+      velocityInput.value = randomInt(1, maxVelocity);
+      answer.textContent = "";
+      roundTag.textContent = `Round ${roundNumber}`;
+      challengeText.textContent = `Challenge: set mass to ${challenge.mass} kg and velocity to ${challenge.velocity} m/s. What kinetic energy will it have?`;
+      stopCartAtStart();
+      updateSimulation();
+      resetQuizForCurrentCart();
+    }
+
+    function updateSimulation() {
+      const { mass, velocity, energy } = currentValues();
+      const energyPercent = Math.min((energy / maxEnergy) * 100, 100);
+      const loadHeight = 18 + (mass / maxMass) * 38;
+      const speedAlpha = 0.15 + (velocity / maxVelocity) * 0.85;
+
+      massValue.textContent = `${mass} kg`;
+      velocityValue.textContent = `${formatNumber(velocity)} m/s`;
+      massReadout.textContent = `${mass} kg`;
+      velocityReadout.textContent = `${formatNumber(velocity)} m/s`;
+      energyReadout.textContent = `${Math.round(energy)} J`;
+      energyFill.style.width = `${energyPercent}%`;
+      cartLoad.style.setProperty("--load-height", `${loadHeight}px`);
+      cart.style.setProperty("--speed-alpha", speedAlpha.toFixed(2));
+      updateComputation(mass, velocity, energy);
+      drawGraph(mass, velocity);
+    }
+
+    function updateComputation(mass, velocity, energy) {
+      const squaredVelocity = velocity * velocity;
+      const halfMass = 0.5 * mass;
+
+      stepSubstitute.textContent = `KE = 1/2(${mass})(${formatNumber(velocity)}^2)`;
+      stepSquare.textContent = `KE = ${formatNumber(halfMass)} x ${formatNumber(squaredVelocity)}`;
+      stepAnswer.textContent = `KE = ${formatNumber(energy)} J`;
+    }
+
+    function drawGraph(activeMass, activeVelocity) {
+      const width = graph.width;
+      const height = graph.height;
+      const pad = 44;
+      const graphWidth = width - pad * 1.45;
+      const graphHeight = height - pad * 1.35;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#fbfdff";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "#d8e0ea";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = pad + (graphHeight / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad, y);
+        ctx.lineTo(pad + graphWidth, y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#14213d";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pad, pad);
+      ctx.lineTo(pad, pad + graphHeight);
+      ctx.lineTo(pad + graphWidth, pad + graphHeight);
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let v = 0; v <= maxVelocity; v += 0.25) {
+        const x = pad + (v / maxVelocity) * graphWidth;
+        const y = pad + graphHeight - (kineticEnergy(activeMass, v) / maxEnergy) * graphHeight;
+        if (v === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "#0f8b8d";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      const activeEnergy = kineticEnergy(activeMass, activeVelocity);
+      const pointX = pad + (activeVelocity / maxVelocity) * graphWidth;
+      const pointY = pad + graphHeight - (activeEnergy / maxEnergy) * graphHeight;
+
+      ctx.fillStyle = "#f25f5c";
+      ctx.beginPath();
+      ctx.arc(pointX, pointY, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#5e6b7a";
+      ctx.font = "16px Arial";
+      ctx.fillText("Velocity (m/s)", pad + graphWidth / 2 - 48, height - 12);
+      ctx.save();
+      ctx.translate(15, pad + graphHeight / 2 + 45);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Kinetic Energy (J)", 0, 0);
+      ctx.restore();
+
+      ctx.fillStyle = "#14213d";
+      ctx.font = "bold 15px Arial";
+      ctx.fillText(`${Math.round(activeEnergy)} J`, Math.min(pointX + 10, width - 72), Math.max(pointY - 10, 22));
+    }
+
+    function maxCartTravel() {
+      const stageWidth = stage.clientWidth;
+      const cartWidth = cart.getBoundingClientRect().width;
+      return Math.max(stageWidth * 0.9 - cartWidth, 0);
+    }
+
+    function animateCart(time) {
+      const velocity = Number(velocityInput.value);
+      const travel = maxCartTravel();
+
+      if (!lastTime) lastTime = time;
+      const deltaSeconds = (time - lastTime) / 1000;
+      lastTime = time;
+
+      position += velocity * 18 * deltaSeconds;
+      if (position > travel) position = 0;
+      cart.style.setProperty("--x", `${position}px`);
+
+      animationId = requestAnimationFrame(animateCart);
+    }
+
+    function launchCart() {
+      cancelAnimationFrame(animationId);
+      lastTime = 0;
+      animationId = requestAnimationFrame(animateCart);
+    }
+
+    function stopCartAtStart() {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+      lastTime = 0;
+      position = 0;
+      cart.style.setProperty("--x", "0px");
+    }
+
+    function renderQuiz() {
+      const item = quizQuestions[quizIndex];
+      answered = false;
+      quizQuestion.textContent = `${quizIndex + 1}. ${item.question}`;
+      quizOptions.innerHTML = "";
+      quizFeedback.textContent = "Choose the best answer.";
+      quizScore.textContent = `${quizScoreCount}/${quizQuestions.length}`;
+      nextQuestionBtn.disabled = true;
+
+      item.options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.className = "quiz-option";
+        button.type = "button";
+        button.textContent = option;
+        button.addEventListener("click", () => checkQuizAnswer(index));
+        quizOptions.appendChild(button);
+      });
+    }
+
+    function checkQuizAnswer(selectedIndex) {
+      if (answered) return;
+
+      const item = quizQuestions[quizIndex];
+      const optionButtons = [...quizOptions.querySelectorAll(".quiz-option")];
+      answered = true;
+      nextQuestionBtn.disabled = false;
+
+      optionButtons.forEach((button, index) => {
+        button.disabled = true;
+        if (index === item.answer) button.classList.add("correct");
+        if (index === selectedIndex && selectedIndex !== item.answer) button.classList.add("wrong");
+      });
+
+      if (selectedIndex === item.answer) {
+        quizScoreCount++;
+        quizFeedback.textContent = `Correct. ${item.explanation}`;
+      } else {
+        quizFeedback.textContent = `Not quite. ${item.explanation}`;
+      }
+
+      quizScore.textContent = `${quizScoreCount}/${quizQuestions.length}`;
+    }
+
+    massInput.addEventListener("input", () => {
+      answer.textContent = "";
+      updateSimulation();
+      resetQuizForCurrentCart();
+    });
+
+    velocityInput.addEventListener("input", () => {
+      answer.textContent = "";
+      updateSimulation();
+      resetQuizForCurrentCart();
+    });
+
+    document.querySelector("#launchBtn").addEventListener("click", launchCart);
+
+    document.querySelector("#doubleMassBtn").addEventListener("click", () => {
+      massInput.value = Math.min(Number(massInput.value) * 2, maxMass);
+      answer.textContent = "";
+      updateSimulation();
+      resetQuizForCurrentCart();
+    });
+
+    document.querySelector("#doubleVelocityBtn").addEventListener("click", () => {
+      velocityInput.value = Math.min(Number(velocityInput.value) * 2, maxVelocity);
+      answer.textContent = "";
+      updateSimulation();
+      resetQuizForCurrentCart();
+    });
+
+    document.querySelector("#resetBtn").addEventListener("click", startNewRound);
+
+    document.querySelector("#checkBtn").addEventListener("click", () => {
+      const { mass, velocity, energy } = currentValues();
+      if (mass === challenge.mass && velocity === challenge.velocity) {
+        answer.textContent = `Correct: KE = 1/2 x ${challenge.mass} x ${challenge.velocity}^2 = ${formatNumber(challenge.energy)} J.`;
+      } else {
+        answer.textContent = `Current KE is ${formatNumber(energy)} J. Try ${challenge.mass} kg and ${challenge.velocity} m/s for this round.`;
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      position = Math.min(position, maxCartTravel());
+      cart.style.setProperty("--x", `${position}px`);
+      updateSimulation();
+    });
+
+    nextQuestionBtn.addEventListener("click", () => {
+      if (quizIndex < quizQuestions.length - 1) {
+        quizIndex++;
+        renderQuiz();
+      } else {
+        quizFeedback.textContent = `Quiz complete. Final score: ${quizScoreCount}/${quizQuestions.length}.`;
+        calcPanel.hidden = false;
+        updateSimulation();
+        nextQuestionBtn.disabled = true;
+      }
+    });
+
+    restartQuizBtn.addEventListener("click", resetQuizForCurrentCart);
+
+    startNewRound();
+  </script>
+</body>
+</html>
